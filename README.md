@@ -54,7 +54,9 @@
 
 - Requires `git` to be installed and available in your `$PATH`.
 - Relies on the presence of a Git repository to show branch and status info.
-- Tested on WSL2 (ubuntu 22.04).
+- Tested on WSL2 (ubuntu 22.04 and later).
+- Properly escaped for GNU Readline to prevent cursor misalignment, copy-paste glitches, or prompt wrapping.
+- Uses `git status --porcelain` for fast, locale-independent dirty state detection.
 - Colors and symbols can be customized by editing the `.bash_gitprompt` file.
 - Terminal/tab title updating works in most xterm-compatible terminals.
 
