@@ -5,7 +5,8 @@ parse_git_branch() {
 
   local branch remote state
 
-  if [[ ! "${git_status}" =~ "working directory clean" ]]; then
+  # Fast, language-agnostic dirty check using --porcelain
+  if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
     state="⚡"
   fi
 
@@ -18,8 +19,11 @@ parse_git_branch() {
   fi
 
   if [[ "${git_status}" =~ "On branch " ]]; then
-    branch=$(git rev-parse --abbrev-ref HEAD)
-    printf " (%s)%s%s" "$branch" "${remote:-}" "${state:-}"
+    branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+    printf "(%s)%s%s" "$branch" "${remote:-}" "${state:-}"
+  elif [[ "${git_status}" =~ "HEAD detached" ]]; then
+    branch=$(git rev-parse --short HEAD 2>/dev/null)
+    printf "(%s)%s%s" "$branch" "${remote:-}" "${state:-}"
   fi
 }
 
@@ -28,23 +32,26 @@ prompt_func() {
   local user_color="\[\e[1;32m\]"   # bright green
   local host_color="\[\e[1;36m\]"   # bright cyan
   local path_color="\[\e[1;34m\]"   # bright blue
-  local reset_color="\[\e[0m\]"
-  local gitinfo="\[\e[0;32m\]$(parse_git_branch)\[$reset_color\]"
-  local prompt_symbol
+  local git_color="\[\e[0;32m\]"    # green for git branch
+  local reset="\[\e[0m\]"
+  local err_color="\[\e[0;31m\]"    # red for error
 
-  if [ "$EUID" -eq 0 ]; then
-    prompt_symbol="#"
-  else
-    prompt_symbol="$"
+  local git_info
+  git_info="$(parse_git_branch)"
+  if [ -n "$git_info" ]; then
+    git_info=" ${git_color}${git_info}"
   fi
+
+  local prompt_symbol="$"
+  [ "$EUID" -eq 0 ] && prompt_symbol="#"
 
   # Terminal/tab title escape sequence (properly wrapped in \[ \])
   local title="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]"
 
-  PS1="${title}${user_color}\u${host_color}@\h${path_color}:\w${gitinfo} ${reset_color}${prompt_symbol} "
+  PS1="${title}${user_color}\u${host_color}@\h${path_color}:\w${git_info}${reset} ${prompt_symbol} "
 
   if [ $ret -ne 0 ]; then
-    PS1="${PS1}\[\e[0;31m\]✘\[\e[0m\] "
+    PS1="${PS1}${err_color}✘${reset} "
   fi
 }
 
